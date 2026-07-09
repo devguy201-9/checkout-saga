@@ -1,0 +1,14 @@
+.git
+.github
+.vscode
+.idea
+bin/
+dist/
+docs/
+integration-test/
+tests/
+*.md
+.env*
+coverage.txt
+coverage.html
+*.test

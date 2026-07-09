@@ -1,0 +1,136 @@
+# .golangci.yml — strict linter config
+# https://golangci-lint.run/usage/configuration/
+#
+# Senior-grade discipline: lint pass = pre-commit requirement.
+
+version: "2"
+
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  default: none
+  enable:
+    # Correctness
+    - errcheck
+    - errorlint
+    - govet
+    - ineffassign
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - unused
+    - noctx              # missing context.Context in HTTP/SQL calls
+    - bodyclose
+    - exhaustive
+    - nilerr
+    - copyloopvar        # Go 1.22+ loop var capture
+
+    # Style / consistency
+    - revive
+    - misspell
+    - whitespace
+    - unconvert
+    - unparam
+    - predeclared
+    - godot
+    - nolintlint
+    - paralleltest
+    - tparallel
+    - thelper
+
+    # Complexity / readability
+    - cyclop
+    - funlen
+    - gocognit
+    - nestif
+    - gocyclo
+
+    # Security
+    - gosec
+
+    # Hygiene
+    - dupl
+    - goconst
+    - gocritic
+    - prealloc
+    - makezero
+    - dogsled
+    - nakedret
+
+  settings:
+    cyclop:
+      max-complexity: 15
+    funlen:
+      lines: 80
+      statements: 50
+    gocognit:
+      min-complexity: 20
+    gocyclo:
+      min-complexity: 15
+    nestif:
+      min-complexity: 5
+    dupl:
+      threshold: 120
+    goconst:
+      min-len: 3
+      min-occurrences: 4
+      ignore-tests: true
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    errorlint:
+      errorf: true
+      asserts: true
+    exhaustive:
+      default-signifies-exhaustive: false
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: range
+        - name: receiver-naming
+        - name: unexported-return
+        - name: time-naming
+        - name: unused-parameter
+        - name: errorf
+
+  exclusions:
+    rules:
+      # Tests can be longer + can have more "magic numbers".
+      - path: _test\.go
+        linters:
+          - funlen
+          - dupl
+          - gosec
+          - cyclop
+          - gocognit
+      # Main packages have init logic, allow longer functions.
+      - path: cmd/.*/main\.go
+        linters:
+          - funlen
+          - gocognit
+      # Migrations may have raw SQL strings — skip dupl/goconst.
+      - path: migrations/.*
+        linters:
+          - dupl
+          - goconst
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
