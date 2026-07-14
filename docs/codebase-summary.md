@@ -31,6 +31,8 @@ Per-service layers (Clean Architecture — see [ADR-0002](adr/0002-clean-archite
 | `controller/http/` | REST handlers | Imports usecase |
 | `controller/grpc/` | gRPC handlers (planned) | Imports usecase |
 
+> `internal/order/app/` is populated: `config.go` (composed `Config` embedding the shared `pkg/config` blocks + `ORDER_HTTP_PORT` / `ORDER_DB_NAME`) and `app.go` (`Run()`: load config → logger → connect Postgres with retry → log DB version + pool stats → graceful shutdown on SIGINT/SIGTERM).
+
 ### `pkg/`
 
 Cross-service shared utilities. **No business logic**. If a `pkg/X` is used by only 1 service, move it to `internal/`.
@@ -38,10 +40,12 @@ Cross-service shared utilities. **No business logic**. If a `pkg/X` is used by o
 | Path | Purpose | Status |
 |---|---|---|
 | `pkg/logger/` | zap wrapper + trace_id context propagation | present |
-| `pkg/postgres/` | pgx pool wrapper, connection retry | planned |
+| `pkg/postgres/` | pgx/v5 pool wrapper, options pattern, connect retry (exponential backoff), health/version/stat | present |
 | `pkg/httpserver/` | HTTP server with options pattern + graceful shutdown | planned |
 | `pkg/errors/` | Typed errors, error codes | when first typed error is needed |
-| `pkg/config/` | Env loading + validation | planned |
+| `pkg/config/` | Env loading (`caarlos0/env/v11`) + validation (`validator/v10`), generic `Load[T]()` + shared `App`/`Log`/`PG` blocks | present |
+
+> `pkg/postgres` defines its own consumer-side `Logger` interface (Info/Warn/Error with `zap.Field`) so it stays decoupled from `pkg/logger`; a `logger.Logger` value satisfies it directly. Config split: **shared** reusable blocks (`App`, `Log`, `PG`) live in `pkg/config`; the **per-service composed** struct lives in that service's `app/` package (composition root).
 
 ### `proto/v1/`
 
@@ -69,7 +73,7 @@ gRPC `.proto` definitions. Generated `.pb.go` checked in. Planned.
 | `docs/codebase-summary.md` | This file |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/checkpoints/` | Per-topic verify checklists |
-| `docs/design/` | Per-service deep design (planned) |
+| `docs/design/` | Per-service deep design (order-db present) |
 | `docs/plans/` | Planning templates |
 
 ### `tests/`
@@ -96,7 +100,7 @@ gRPC `.proto` definitions. Generated `.pb.go` checked in. Planned.
 ## Inter-service dependencies (current)
 
 ```
-[None yet — services are isolated skeletons]
+[Order owns its order_db connection; services do not yet talk to each other]
 ```
 
 Will be updated as services start talking.

@@ -49,7 +49,7 @@ verify-db: ## Check 4 databases exist
 	@$(DOCKER) exec -T postgres psql -U $(POSTGRES_USER) -d postgres -c "\l" \
 		| grep -E "order_db|inventory_db|payment_db|saga_db" \
 		|| (echo "DATABASES MISSING. Run: make down-v && make up"; exit 1)
-	@echo "✓ 4 databases exist"
+	@echo "  4 databases exist"
 
 .PHONY: verify-redis
 verify-redis: ## Check Redis responds
@@ -57,13 +57,13 @@ verify-redis: ## Check Redis responds
 
 .PHONY: verify
 verify: verify-db verify-redis ## Verify all infra healthy
-	@echo "✓ Infra OK"
+	@echo "  Infra OK"
 
 ## --- Build ---
 
 .PHONY: build
 build: $(SERVICES:%=build-%) ## Build all 5 services to bin/
-	@echo "✓ All services built"
+	@echo "  All services built"
 
 build-%: ## Build single service
 	@mkdir -p $(BIN_DIR)
@@ -127,7 +127,7 @@ tidy: ## go mod tidy + verify
 
 .PHONY: pre-commit
 pre-commit: fmt lint test vuln ## Run all gates before commit
-	@echo "✓ Pre-commit gates passed"
+	@echo "  Pre-commit gates passed"
 
 ## --- Cleanup ---
 
@@ -148,10 +148,13 @@ checkpoint: ## Verify the foundation is done
 	@$(MAKE) -s verify
 	@echo ""
 	@echo "3. Build:"
-	@$(MAKE) -s build && echo "   ✓ All 5 services compile"
+	@$(MAKE) -s build && echo "     All 5 services compile"
 	@echo ""
 	@echo "4. Quality gates:"
-	@$(MAKE) -s lint && echo "   ✓ lint pass" || echo "   ✗ lint FAIL"
-	@$(MAKE) -s test && echo "   ✓ tests pass" || echo "   ✗ tests FAIL"
+	@$(MAKE) -s lint && echo "     lint pass" || echo "   ✗ lint FAIL"
+	@$(MAKE) -s test && echo "     tests pass" || echo "   ✗ tests FAIL"
 	@echo ""
-	@echo "===== Foundation ✓ Done ====="
+	@echo "===== Foundation   Done ====="
+
+## --- Database migrations (golang-migrate) ---
+include makefile-nextday1.mk

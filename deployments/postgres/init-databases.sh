@@ -18,4 +18,4 @@ for db in "${databases[@]}"; do
 EOSQL
 done
 
-echo "✓ 4 databases created."
+echo "4 databases created."

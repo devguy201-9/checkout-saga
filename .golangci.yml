@@ -12,52 +12,52 @@ run:
 linters:
   default: none
   enable:
-    # Correctness
-    - errcheck
-    - errorlint
-    - govet
-    - ineffassign
-    - rowserrcheck
-    - sqlclosecheck
-    - staticcheck
-    - unused
-    - noctx              # missing context.Context in HTTP/SQL calls
-    - bodyclose
-    - exhaustive
-    - nilerr
-    - copyloopvar        # Go 1.22+ loop var capture
+  # Correctness
+  - errcheck
+  - errorlint
+  - govet
+  - ineffassign
+  - rowserrcheck
+  - sqlclosecheck
+  - staticcheck
+  - unused
+  - noctx # missing context.Context in HTTP/SQL calls
+  - bodyclose
+  - exhaustive
+  - nilerr
+  - copyloopvar # Go 1.22+ loop var capture
 
-    # Style / consistency
-    - revive
-    - misspell
-    - whitespace
-    - unconvert
-    - unparam
-    - predeclared
-    - godot
-    - nolintlint
-    - paralleltest
-    - tparallel
-    - thelper
+  # Style / consistency
+  - revive
+  - misspell
+  - whitespace
+  - unconvert
+  - unparam
+  - predeclared
+  - godot
+  - nolintlint
+  - paralleltest
+  - tparallel
+  - thelper
 
-    # Complexity / readability
-    - cyclop
-    - funlen
-    - gocognit
-    - nestif
-    - gocyclo
+  # Complexity / readability
+  - cyclop
+  - funlen
+  - gocognit
+  - nestif
+  - gocyclo
 
-    # Security
-    - gosec
+  # Security
+  - gosec
 
-    # Hygiene
-    - dupl
-    - goconst
-    - gocritic
-    - prealloc
-    - makezero
-    - dogsled
-    - nakedret
+  # Hygiene
+  - dupl
+  - goconst
+  - gocritic
+  - prealloc
+  - makezero
+  - dogsled
+  - nakedret
 
   settings:
     cyclop:
@@ -85,46 +85,50 @@ linters:
       asserts: true
     exhaustive:
       default-signifies-exhaustive: false
+    staticcheck:
+      checks:
+      - all
+      - -QF1008
     revive:
       rules:
-        - name: exported
-        - name: package-comments
-        - name: var-naming
-        - name: blank-imports
-        - name: context-as-argument
-        - name: context-keys-type
-        - name: error-return
-        - name: error-strings
-        - name: error-naming
-        - name: if-return
-        - name: increment-decrement
-        - name: range
-        - name: receiver-naming
-        - name: unexported-return
-        - name: time-naming
-        - name: unused-parameter
-        - name: errorf
+      - name: exported
+      - name: package-comments
+      - name: var-naming
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: increment-decrement
+      - name: range
+      - name: receiver-naming
+      - name: unexported-return
+      - name: time-naming
+      - name: unused-parameter
+      - name: errorf
 
   exclusions:
     rules:
-      # Tests can be longer + can have more "magic numbers".
-      - path: _test\.go
-        linters:
-          - funlen
-          - dupl
-          - gosec
-          - cyclop
-          - gocognit
-      # Main packages have init logic, allow longer functions.
-      - path: cmd/.*/main\.go
-        linters:
-          - funlen
-          - gocognit
-      # Migrations may have raw SQL strings — skip dupl/goconst.
-      - path: migrations/.*
-        linters:
-          - dupl
-          - goconst
+    # Tests can be longer + can have more "magic numbers".
+    - path: _test\.go
+      linters:
+      - funlen
+      - dupl
+      - gosec
+      - cyclop
+      - gocognit
+    # Main packages have init logic, allow longer functions.
+    - path: cmd/.*/main\.go
+      linters:
+      - funlen
+      - gocognit
+    # Migrations may have raw SQL strings — skip dupl/goconst.
+    - path: migrations/.*
+      linters:
+      - dupl
+      - goconst
 
 issues:
   max-issues-per-linter: 0
@@ -132,5 +136,5 @@ issues:
 
 formatters:
   enable:
-    - gofumpt
-    - goimports
+  - gofumpt
+  - goimports

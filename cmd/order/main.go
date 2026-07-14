@@ -1,70 +1,29 @@
-// Order Service entry point.
-//
-// Skeleton: init logger and wait for SIGTERM.
+// Command order is the entry point for the Order service. It wires
+// version/commit (injected via ldflags) and delegates all startup logic
+// to the app package (internal/order/app), keeping only os.Exit here.
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"runtime/debug"
-	"syscall"
 
-	"github.com/joho/godotenv"
-	"go.uber.org/zap"
-
-	"github.com/devguy201-9/checkout-saga/pkg/logger"
+	"github.com/devguy201-9/checkout-saga/internal/order/app"
 )
 
-const serviceName = "order-service"
-
+// version/commit are set via ldflags at build time:
+//
+//	-X main.version=$(VERSION) -X main.commit=$(COMMIT)
 var (
 	version = "dev"
 	commit  = "unknown"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		// .env optional in prod (env vars set directly) — log at debug/warn, don't fail
-		fmt.Fprintf(os.Stderr, "warning: .env not loaded: %v\n", err)
+	if err := app.Run(version, commit); err != nil {
+		// Exit only in main (never os.Exit from deep in the code). The error is
+		// already structured-logged inside app.Run once the logger is up; stderr
+		// is the fallback for failures before the logger is ready (e.g. config load).
+		fmt.Fprintln(os.Stderr, "order-service fatal:", err)
+		os.Exit(1)
 	}
-
-	level := envOr("LOG_LEVEL", "info")
-	dev := envOr("APP_ENV", "development") == "development"
-
-	log := logger.NewWithService(level, serviceName, dev)
-	defer func() {
-		if err := log.Sync(); err != nil {
-			fmt.Fprintf(os.Stderr, "logger sync failed: %v\n", err)
-		}
-	}()
-
-	log.Info(
-		"service starting",
-		zap.String("version", version),
-		zap.String("commit", commit),
-		zap.String("go_version", goVersion()),
-		zap.String("port", envOr("ORDER_HTTP_PORT", "8081")),
-	)
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	<-ctx.Done()
-	log.Info("shutdown signal received, exiting gracefully")
-}
-
-func envOr(key, fallback string) string {
-	if v, ok := os.LookupEnv(key); ok && v != "" {
-		return v
-	}
-	return fallback
-}
-
-func goVersion() string {
-	if bi, ok := debug.ReadBuildInfo(); ok {
-		return bi.GoVersion
-	}
-	return "unknown"
 }
