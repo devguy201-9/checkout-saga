@@ -28,10 +28,10 @@ Per-service layers (Clean Architecture — see [ADR-0002](adr/0002-clean-archite
 | `entity/` | Domain types, invariants, sentinel errors | Imported by usecase |
 | `usecase/` | Business logic, defines repo interfaces (consumer side) | Imports entity |
 | `repo/` | Data access implementations (postgres, redis...) | Implements usecase interfaces |
-| `controller/http/` | REST handlers | Imports usecase |
+| `controller/http/` | REST handlers, DTOs, trace_id middleware | Imports usecase |
 | `controller/grpc/` | gRPC handlers (planned) | Imports usecase |
 
-> `internal/order/app/` is populated: `config.go` (composed `Config` embedding the shared `pkg/config` blocks + `ORDER_HTTP_PORT` / `ORDER_DB_NAME`) and `app.go` (`Run()`: load config → logger → connect Postgres with retry → log DB version + pool stats → graceful shutdown on SIGINT/SIGTERM).
+> `internal/order/app/` is populated: `config.go` (composed `Config` embedding the shared `pkg/config` blocks + `ORDER_HTTP_PORT` / `ORDER_DB_NAME`) and `app.go` (`Run()`: load config → logger → connect Postgres with retry → log DB version + pool stats → graceful shutdown on SIGINT/SIGTERM). It also wires repo -> usecase -> controller into pkg/httpserver and drains HTTP before closing the pool.
 
 ### `pkg/`
 
@@ -41,7 +41,7 @@ Cross-service shared utilities. **No business logic**. If a `pkg/X` is used by o
 |---|---|---|
 | `pkg/logger/` | zap wrapper + trace_id context propagation | present |
 | `pkg/postgres/` | pgx/v5 pool wrapper, options pattern, connect retry (exponential backoff), health/version/stat | present |
-| `pkg/httpserver/` | HTTP server with options pattern + graceful shutdown | planned |
+| `pkg/httpserver/` | net/http server wrapper: options pattern + graceful shutdown | present |
 | `pkg/errors/` | Typed errors, error codes | when first typed error is needed |
 | `pkg/config/` | Env loading (`caarlos0/env/v11`) + validation (`validator/v10`), generic `Load[T]()` + shared `App`/`Log`/`PG` blocks | present |
 
@@ -100,7 +100,7 @@ gRPC `.proto` definitions. Generated `.pb.go` checked in. Planned.
 ## Inter-service dependencies (current)
 
 ```
-[Order owns its order_db connection; services do not yet talk to each other]
+[Order exposes REST on ORDER_HTTP_PORT and owns order_db; services do not yet talk to each other]
 ```
 
 Will be updated as services start talking.

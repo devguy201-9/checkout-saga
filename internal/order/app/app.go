@@ -13,7 +13,11 @@ import (
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
+	orderhttp "github.com/devguy201-9/checkout-saga/internal/order/controller/http"
+	"github.com/devguy201-9/checkout-saga/internal/order/repo"
+	"github.com/devguy201-9/checkout-saga/internal/order/usecase"
 	"github.com/devguy201-9/checkout-saga/pkg/config"
+	"github.com/devguy201-9/checkout-saga/pkg/httpserver"
 	"github.com/devguy201-9/checkout-saga/pkg/logger"
 	"github.com/devguy201-9/checkout-saga/pkg/postgres"
 )
@@ -61,12 +65,43 @@ func Run(version, commit string) error {
 	defer pg.Close()
 
 	logDBInfo(ctx, log, pg)
+	// Wire the layers: repo (data) -> usecase (business) -> controller (HTTP).
+	// Dependencies flow inward and are injected through constructors, so each
+	// layer can be tested with a fake of the layer below.
+	orderRepo := repo.NewOrderRepo(pg)
+	orderUseCase := usecase.NewOrderUseCase(orderRepo)
+	router := orderhttp.NewRouter(orderUseCase, log)
+
+	server := httpserver.New(router, httpserver.Port(cfg.HTTPPort))
+	server.Start()
 	log.Info("order service ready", zap.String("http_port", cfg.HTTPPort))
 
-	// No HTTP server yet (added later with pkg/httpserver + handlers).
-	// Block until a shutdown signal to verify the full lifecycle.
-	<-ctx.Done()
-	log.Info("shutdown signal received, exiting gracefully")
+	return waitForShutdown(ctx, log, server)
+}
+
+// waitForShutdown blocks until either a signal or a fatal server error, then
+// drains HTTP. The DB pool is closed after this returns (deferred in Run), so
+// in-flight requests still have a working pool while they finish.
+func waitForShutdown(ctx context.Context, log logger.Logger, server *httpserver.Server) error {
+	select {
+	case <-ctx.Done():
+		log.Info("shutdown signal received, draining http server")
+
+	case err := <-server.Notify():
+		// e.g. the port is already taken — do not pretend to be healthy.
+		log.Error("http server stopped unexpectedly", zap.Error(err))
+
+		return fmt.Errorf("app.Run: %w", err)
+	}
+
+	if err := server.Shutdown(); err != nil {
+		log.Error("http server shutdown", zap.Error(err))
+
+		return fmt.Errorf("app.Run: %w", err)
+	}
+
+	log.Info("shutdown complete, exiting gracefully")
+
 	return nil
 }
 
