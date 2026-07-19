@@ -10,6 +10,7 @@ type Config struct {
 	config.App
 	config.Log
 	config.PG
+	config.Auth
 
 	HTTPPort string `env:"ORDER_HTTP_PORT" envDefault:"8081" validate:"required"`
 	DBName   string `env:"ORDER_DB_NAME" envDefault:"order_db" validate:"required"`

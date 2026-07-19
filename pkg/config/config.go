@@ -9,6 +9,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
@@ -25,6 +26,18 @@ type App struct {
 // Log configures the logger (pkg/logger reads these fields).
 type Log struct {
 	Level string `env:"LOG_LEVEL" envDefault:"info" validate:"oneof=debug info warn error"`
+}
+
+// Auth holds the JWT signing settings shared by any service that issues or
+// verifies tokens. It lives in pkg/config (not per-service) because the same
+// secret must be shared once multiple services verify the same tokens.
+//
+// The secret is min=32 chars: HS256 security is bounded by the key length, and
+// a short secret is brute-forceable. config.Load fails fast when JWT_SECRET is
+// absent (required) or too short, so a misconfigured service never starts.
+type Auth struct {
+	JWTSecret string        `env:"JWT_SECRET,required" validate:"required,min=32"`
+	JWTExpiry time.Duration `env:"JWT_TOKEN_EXPIRY" envDefault:"24h" validate:"gt=0"`
 }
 
 // PG holds the shared PostgreSQL connection settings. It reuses the same

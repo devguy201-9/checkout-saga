@@ -37,3 +37,8 @@ logs/
 
 # Build artifacts
 tmp/
+
+# Claude
+.claude/
+plans/
+AGENTS.md

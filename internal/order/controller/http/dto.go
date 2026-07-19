@@ -12,12 +12,12 @@ import (
 
 // createOrderRequest is the POST /orders body.
 //
-// user_id is temporary: it belongs in the JWT and will be read from the request
-// context once auth middleware exists. A real client must not be able to place
-// an order on someone else's behalf.
+// user_id is deliberately absent: the identity comes from the verified token via
+// the auth middleware (UserIDFromContext), never from the payload — otherwise a
+// client could place an order on someone else's behalf. decodeJSON rejects
+// unknown fields, so a stray "user_id" in the body is a 400, not silently used.
 type createOrderRequest struct {
-	UserID string            `json:"user_id" validate:"required,uuid"`
-	Items  []createOrderItem `json:"items"   validate:"required,min=1,dive"`
+	Items []createOrderItem `json:"items" validate:"required,min=1,dive"`
 }
 
 type createOrderItem struct {

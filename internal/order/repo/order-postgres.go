@@ -88,7 +88,8 @@ func (r *OrderRepo) Create(ctx context.Context, order *entity.Order) (*entity.Or
 	}()
 
 	var orderID string
-	err = tx.QueryRow(ctx, insertOrder,
+	err = tx.QueryRow(
+		ctx, insertOrder,
 		order.UserID, order.TotalAmount.String(), string(order.Status), order.IdempotencyKey,
 	).Scan(&orderID)
 

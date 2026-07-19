@@ -18,6 +18,7 @@ import (
 	"github.com/devguy201-9/checkout-saga/internal/order/usecase"
 	"github.com/devguy201-9/checkout-saga/pkg/config"
 	"github.com/devguy201-9/checkout-saga/pkg/httpserver"
+	"github.com/devguy201-9/checkout-saga/pkg/jwt"
 	"github.com/devguy201-9/checkout-saga/pkg/logger"
 	"github.com/devguy201-9/checkout-saga/pkg/postgres"
 )
@@ -70,7 +71,9 @@ func Run(version, commit string) error {
 	// layer can be tested with a fake of the layer below.
 	orderRepo := repo.NewOrderRepo(pg)
 	orderUseCase := usecase.NewOrderUseCase(orderRepo)
-	router := orderhttp.NewRouter(orderUseCase, log)
+	// Built from config (secret validated min=32 at load), injected — no globals.
+	jwtMgr := jwt.NewManager(cfg.Auth.JWTSecret, cfg.Auth.JWTExpiry)
+	router := orderhttp.NewRouter(orderUseCase, jwtMgr, log)
 
 	server := httpserver.New(router, httpserver.Port(cfg.HTTPPort))
 	server.Start()

@@ -28,10 +28,12 @@ Per-service layers (Clean Architecture — see [ADR-0002](adr/0002-clean-archite
 | `entity/` | Domain types, invariants, sentinel errors | Imported by usecase |
 | `usecase/` | Business logic, defines repo interfaces (consumer side) | Imports entity |
 | `repo/` | Data access implementations (postgres, redis...) | Implements usecase interfaces |
-| `controller/http/` | REST handlers, DTOs, trace_id middleware | Imports usecase |
+| `controller/http/` | REST handlers, DTOs, trace_id + auth middleware, request context helpers | Imports usecase, pkg/jwt |
 | `controller/grpc/` | gRPC handlers (planned) | Imports usecase |
 
-> `internal/order/app/` is populated: `config.go` (composed `Config` embedding the shared `pkg/config` blocks + `ORDER_HTTP_PORT` / `ORDER_DB_NAME`) and `app.go` (`Run()`: load config → logger → connect Postgres with retry → log DB version + pool stats → graceful shutdown on SIGINT/SIGTERM). It also wires repo -> usecase -> controller into pkg/httpserver and drains HTTP before closing the pool.
+> `internal/order/app/` is populated: `config.go` (composed `Config` embedding the shared `pkg/config` blocks — `App`/`Log`/`PG`/`Auth` — + `ORDER_HTTP_PORT` / `ORDER_DB_NAME`) and `app.go` (`Run()`: load config → logger → connect Postgres with retry → log DB version + pool stats → build `jwt.Manager` → graceful shutdown on SIGINT/SIGTERM). It also wires repo -> usecase -> controller into pkg/httpserver and drains HTTP before closing the pool.
+
+> `controller/http/` auth: `authMiddleware(jwtMgr, log)` verifies `Authorization: Bearer <token>`, injects the token subject via `WithUserID` / `UserIDFromContext` (`context.go`), and returns the `{error}` envelope (`missing_token` / `invalid_token`) on failure. Applied per protected route (`POST /orders`, `GET /orders/{id}`); `POST /login` (dev mock issuer, `login-handler.go`) is public. `withTraceID` stays outermost so a 401 is still traced. `POST /orders` takes `user_id` from the context, never the body (removed from `createOrderRequest`). See ADR-0006.
 
 ### `pkg/`
 
@@ -42,8 +44,9 @@ Cross-service shared utilities. **No business logic**. If a `pkg/X` is used by o
 | `pkg/logger/` | zap wrapper + trace_id context propagation | present |
 | `pkg/postgres/` | pgx/v5 pool wrapper, options pattern, connect retry (exponential backoff), health/version/stat | present |
 | `pkg/httpserver/` | net/http server wrapper: options pattern + graceful shutdown | present |
+| `pkg/jwt/` | HS256 `Manager` (DI, no globals): `Generate`/`Parse`, HMAC signing method enforced (rejects `alg:none`/non-HMAC), sentinel `ErrInvalidToken` | present |
 | `pkg/errors/` | Typed errors, error codes | when first typed error is needed |
-| `pkg/config/` | Env loading (`caarlos0/env/v11`) + validation (`validator/v10`), generic `Load[T]()` + shared `App`/`Log`/`PG` blocks | present |
+| `pkg/config/` | Env loading (`caarlos0/env/v11`) + validation (`validator/v10`), generic `Load[T]()` + shared `App`/`Log`/`PG`/`Auth` blocks | present |
 
 > `pkg/postgres` defines its own consumer-side `Logger` interface (Info/Warn/Error with `zap.Field`) so it stays decoupled from `pkg/logger`; a `logger.Logger` value satisfies it directly. Config split: **shared** reusable blocks (`App`, `Log`, `PG`) live in `pkg/config`; the **per-service composed** struct lives in that service's `app/` package (composition root).
 

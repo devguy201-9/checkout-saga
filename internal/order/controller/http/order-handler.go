@@ -62,8 +62,10 @@ func (h *orderHandler) create(w nethttp.ResponseWriter, r *nethttp.Request) {
 		return
 	}
 
+	// Identity is the authenticated subject from the token, put in the context
+	// by authMiddleware — NOT anything in the request body.
 	order, created, err := h.orderUseCase.Create(ctx, usecase.CreateOrderCommand{
-		UserID:         req.UserID,
+		UserID:         UserIDFromContext(ctx),
 		IdempotencyKey: key,
 		Items:          req.toEntityItems(),
 	})
@@ -78,7 +80,8 @@ func (h *orderHandler) create(w nethttp.ResponseWriter, r *nethttp.Request) {
 		status = nethttp.StatusCreated
 	}
 
-	h.log.Info("order create handled",
+	h.log.Info(
+		"order create handled",
 		zap.String("order_id", order.ID),
 		zap.Bool("created", created),
 		zap.String("trace_id", logger.TraceIDFromContext(ctx)),
@@ -122,7 +125,8 @@ func (h *orderHandler) writeUseCaseError(ctx context.Context, w nethttp.Response
 	default:
 		// Unexpected: log the detail, return a generic message. Internal errors
 		// can leak schema/infrastructure details to a caller.
-		h.log.Error(op+" failed",
+		h.log.Error(
+			op+" failed",
 			zap.Error(err),
 			zap.String("trace_id", logger.TraceIDFromContext(ctx)),
 		)
